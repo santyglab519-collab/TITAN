@@ -1,13 +1,18 @@
 import time
-from typing import Tuple, List, Dict, Any
+from typing import Any, List, Tuple
+
 from apps.backend.core.interfaces import BaseVerifier
-from apps.backend.core.schemas import VerificationResult, TraceLog
+from apps.backend.core.schemas import TraceLog, VerificationResult
+
 
 class MockVerifier(BaseVerifier):
     """
     Mock Verifier Agent for Phase 1 that computes quality scores.
     """
-    async def verify(self, task_output: Any, requirements: List[str]) -> Tuple[VerificationResult, List[TraceLog]]:
+
+    async def verify(
+        self, task_output: Any, requirements: List[str]
+    ) -> Tuple[VerificationResult, List[TraceLog]]:
         start_time = time.time()
 
         # In a real implementation, we would call an LLM Verifier Agent with these metrics
@@ -27,7 +32,11 @@ class MockVerifier(BaseVerifier):
         confidence = (completeness + consistency + accuracy) / 3.0
         is_valid = confidence >= 0.85
 
-        feedback = "El resultado cumple con los requisitos del sistema." if is_valid else "El resultado es demasiado corto y no cumple con los estándares mínimos de calidad."
+        feedback = (
+            "El resultado cumple con los requisitos del sistema."
+            if is_valid
+            else "El resultado es demasiado corto y no cumple con los estándares mínimos de calidad."
+        )
 
         result = VerificationResult(
             is_valid=is_valid,
@@ -35,7 +44,7 @@ class MockVerifier(BaseVerifier):
             consistency_score=consistency,
             accuracy_score=accuracy,
             confidence_score=confidence,
-            feedback=feedback
+            feedback=feedback,
         )
 
         latency = (time.time() - start_time) * 1000
@@ -45,7 +54,7 @@ class MockVerifier(BaseVerifier):
             token_count=150,
             cost_usd=0.00030,
             quality_score=0.98,
-            metadata={"is_valid": is_valid, "confidence": confidence}
+            metadata={"is_valid": is_valid, "confidence": confidence},
         )
 
         return result, [trace]
