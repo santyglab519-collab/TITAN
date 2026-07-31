@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     # Database configuration
     database_url: str = "postgresql+asyncpg://titan:titan_password@localhost:5432/titan_db"
 
+    # Security & Authentication
+    jwt_secret: str = "super-secret-titan-key-for-jwt-signing"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+
     # Observability
     prometheus_port: int = 8000
 
