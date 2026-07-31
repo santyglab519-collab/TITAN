@@ -1,14 +1,16 @@
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
 from contextlib import asynccontextmanager
 
-from apps.backend.core.schemas import UserRequest, UserResponse
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from apps.backend.brain.database import Base, engine, get_db
 from apps.backend.core.config import settings
 from apps.backend.core.logger import CorrelationIdMiddleware, logger
 from apps.backend.core.metrics import setup_metrics
-from apps.backend.brain.database import get_db, Base, engine
 from apps.backend.core.pipeline import PipelineOrchestrator
+from apps.backend.core.schemas import UserRequest, UserResponse
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,11 +26,12 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to automatically initialize database schemas: {str(e)}")
     yield
 
+
 app = FastAPI(
     title=settings.app_name,
     description="The modular, scalable central API for the TITÁN Personal AI Operating System.",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Enable CORS for Next.js frontend
@@ -49,6 +52,7 @@ setup_metrics(app)
 # Instantiate the decoupled core pipeline orchestrator
 orchestrator = PipelineOrchestrator()
 
+
 @app.get("/")
 async def root():
     logger.info("Root endpoint called")
@@ -56,8 +60,9 @@ async def root():
         "status": "healthy",
         "service": settings.app_name,
         "version": "1.0.0",
-        "message": "Welcome to your Personal AI Operating System Cerebro."
+        "message": "Welcome to your Personal AI Operating System Cerebro.",
     }
+
 
 @app.post("/api/v1/process", response_model=UserResponse)
 async def process_request(request: UserRequest, db: AsyncSession = Depends(get_db)):

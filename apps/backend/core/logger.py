@@ -1,18 +1,21 @@
+import contextvars
 import json
 import logging
 import uuid
-import contextvars
+from datetime import datetime, timezone
+
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from datetime import datetime, timezone
 
 # Context variable to store correlation_id per request/task
 correlation_id_var = contextvars.ContextVar("correlation_id", default="system")
+
 
 class StructuredJSONFormatter(logging.Formatter):
     """
     Custom logger formatter that outputs structured JSON logs including the correlation ID.
     """
+
     def format(self, record: logging.LogRecord) -> str:
         log_data = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -26,9 +29,10 @@ class StructuredJSONFormatter(logging.Formatter):
 
         # Merge extra fields if provided
         if hasattr(record, "extra_fields"):
-            log_data.update(record.extra_fields) # type: ignore
+            log_data.update(record.extra_fields)  # type: ignore
 
         return json.dumps(log_data)
+
 
 def setup_logger(log_level: str = "INFO") -> logging.Logger:
     """
@@ -47,13 +51,16 @@ def setup_logger(log_level: str = "INFO") -> logging.Logger:
     logger.propagate = False
     return logger
 
+
 # Initialize application-wide logger
 logger = setup_logger()
+
 
 class CorrelationIdMiddleware(BaseHTTPMiddleware):
     """
     FastAPI Middleware to propagate and inject a Correlation ID for tracing across request lifecycles.
     """
+
     async def dispatch(self, request: Request, call_next) -> Response:
         # Get from headers if exists, else generate fresh UUID4
         correlation_id = request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
@@ -65,7 +72,9 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
         try:
             response: Response = await call_next(request)
         except Exception as e:
-            logger.error(f"Uncaught exception processing request: {str(e)}", exc_info=True)
+            logger.error(
+                f"Uncaught exception processing request: {str(e)}", exc_info=True
+            )
             raise e
         finally:
             # Clean up context variable
