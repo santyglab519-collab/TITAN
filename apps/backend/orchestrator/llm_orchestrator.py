@@ -2,16 +2,20 @@ import time
 from typing import Tuple, List, Dict, Any
 from apps.backend.core.interfaces import BaseLLMOrchestrator
 from apps.backend.core.schemas import OrchestratedPrompt, TraceLog
+from apps.backend.orchestrator.providers import OpenAIProvider, AnthropicProvider
 
 class MockLLMOrchestrator(BaseLLMOrchestrator):
     """
-    Mock LLM Orchestrator for Phase 1.
+    Decoupled LLM Orchestrator that routes tasks to different providers.
     """
+    def __init__(self):
+        self._openai = OpenAIProvider()
+        self._anthropic = AnthropicProvider()
+
     async def route_and_optimize(self, task_description: str, domain: str, context: Dict[str, Any]) -> Tuple[OrchestratedPrompt, List[TraceLog]]:
         start_time = time.time()
 
-        # Decide between Claude or ChatGPT based on domain/task complexity
-        # In this mock, Claude is chosen for creative or technical design tasks, and ChatGPT for execution
+        # Decide between Claude (Anthropic) or ChatGPT (OpenAI) based on task description keywords
         is_design = any(word in task_description.lower() for word in ["diseñar", "architect", "investigar", "redactar", "verificar"])
 
         if is_design:
@@ -42,21 +46,20 @@ class MockLLMOrchestrator(BaseLLMOrchestrator):
     async def call_model(self, orchestrated_prompt: OrchestratedPrompt) -> Tuple[str, List[TraceLog]]:
         start_time = time.time()
 
-        # Mocking the actual LLM call
-        model = orchestrated_prompt.model_name
-        if "claude" in model:
-            output = f"[Claude Response] Diseño estructurado y detallado para la tarea dada: '{orchestrated_prompt.user_prompt[:50]}...'"
+        # Route execution dynamically to the correct provider
+        if "claude" in orchestrated_prompt.model_name.lower():
+            output, tokens, cost = await self._anthropic.generate_response(orchestrated_prompt)
         else:
-            output = f"[ChatGPT Response] Ejecución e implementación de código rápida y correcta para: '{orchestrated_prompt.user_prompt[:50]}...'"
+            output, tokens, cost = await self._openai.generate_response(orchestrated_prompt)
 
         latency = (time.time() - start_time) * 1000
         trace = TraceLog(
             step_name="LLMModelCall",
             latency_ms=latency,
-            token_count=350,
-            cost_usd=0.00525,
+            token_count=tokens,
+            cost_usd=cost,
             quality_score=0.94,
-            metadata={"model": model}
+            metadata={"model": orchestrated_prompt.model_name}
         )
 
         return output, [trace]
